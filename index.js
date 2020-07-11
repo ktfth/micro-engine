@@ -1,4 +1,5 @@
 'use strict';
+let root = this;
 const vm = require('vm');
 const assert = require('assert');
 
@@ -48,6 +49,7 @@ function render(expression, context) {
   if (self !== undefined && self.vm) out = reproduce(out, context);
   return out;
 }
+root.render = render;
 assert.equal(render('{{message}}', { message: 'hello world' }), 'hello world');
 assert.equal(render('{{message}} {{message}}', {
   message: 'hello world'
