@@ -22,10 +22,7 @@ function traverse(expression, context) {
 }
 
 const rTemplate = new RegExp('(\{\{.*?\}\})', 'ig');
-
-function hasFragments(expression) {
-  return [...expression.matchAll(rTemplate)].length > 0;
-}
+const rVM = new RegExp('(\{\%.*?\%\})', 'ig');
 
 function reproduce(code, context) {
   let out = code;
@@ -38,7 +35,9 @@ function cleanOutput(expression) {
   let out = expression;
   if (out.replace !== undefined) {
     out = out.replace('{{', '');
+    out = out.replace('{%', '');
     out = out.replace('}}', '');
+    out = out.replace('%}', '');
   }
   return out;
 }
@@ -47,7 +46,9 @@ function cleanAllOutput(expression) {
   let out = expression;
   if (out.replace !== undefined) {
     out = out.replace(/\{\{/g, '');
+    out = out.replace(/\{\%/g, '');
     out = out.replace(/\}\}/g, '');
+    out = out.replace(/\%\}/g, '');
   }
   return out;
 }
@@ -81,16 +82,15 @@ function traverseStepContext(expression, context) {
 function render(expression, context) {
   let self = this;
   let out = expression;
-  let expressions = [...out.matchAll(rTemplate)];
+  let templateExpressions = [...out.matchAll(rTemplate)];
+  let vmExpressions = [...out.matchAll(rVM)];
   let c = 0;
-  for (let i = 0; i < expressions.length; i += 1) {
-    let currentExpression = expressions[i];
-    if (self !== undefined && self.vm) {
-      out = reflect(out, context);
-    } else {
-      out = produce(out, context);
-    }
+  for (let i = 0; i < templateExpressions.length; i += 1) {
+    out = produce(out, context);
     out = cleanOutput(out);
+  }
+  for (let i = 0; i < vmExpressions.length; i += 1) {
+    out = reflect(out, context);
   }
   return out;
 }
@@ -103,11 +103,11 @@ assert.equal(render('{{firstValue}} + {{secondValue}}', {
   firstValue: 2,
   secondValue: 3,
 }), '2 + 3');
-assert.equal(render.call({ vm: true }, '{{firstValue + secondValue}}', {
+assert.equal(render('{%firstValue + secondValue%}', {
   firstValue: 3,
   secondValue: 7,
 }), '10');
-// assert.equal(render.call({ vm: true }, '{{firstValue}} + {{secondValue}} = {{firstValue + secondValue}}', {
+// assert.equal(render('{{firstValue}} + {{secondValue}} = {% firstValue + secondValue %}', {
 //   firstValue: 3,
 //   secondValue: 7,
 // }), '3 + 7 = 10');
