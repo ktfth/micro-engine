@@ -1,6 +1,6 @@
 'use strict';
+const vm = require('vm');
 const assert = require('assert');
-
 
 function replace(expression, context) {
   const self = this;
@@ -26,7 +26,15 @@ function hasFragments(expression) {
   return [...expression.matchAll(rTemplate)].length > 0;
 }
 
+function reproduce(code, context) {
+  let out = code;
+  vm.createContext(context);
+  out = vm.runInContext(code, context);
+  return out;
+}
+
 function render(expression, context) {
+  let self = this;
   let out = expression;
   let expressions = [...out.matchAll(rTemplate)];
   let c = 0;
@@ -37,6 +45,7 @@ function render(expression, context) {
     out = out.replace('{{', '');
     out = out.replace('}}', '');
   }
+  if (self !== undefined && self.vm) out = reproduce(out, context);
   return out;
 }
 assert.equal(render('{{message}}', { message: 'hello world' }), 'hello world');
@@ -47,3 +56,7 @@ assert.equal(render('{{firstValue}} + {{secondValue}}', {
   firstValue: 2,
   secondValue: 3,
 }), '2 + 3');
+assert.equal(render.call({ vm: true }, '{{firstValue + secondValue}}', {
+  firstValue: 3,
+  secondValue: 7,
+}), '10');
