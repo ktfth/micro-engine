@@ -11,10 +11,10 @@ function replace(expression, context) {
 }
 
 function traverse(expression, context) {
-  let out = '';
+  let out = expression;
   Object.keys(context).forEach(key => {
     let matches = [...expression.matchAll(key)];
-    out = replace.call({ matches: matches, key: key }, expression, context);
+    out = replace.call({ matches: matches, key: key }, out, context);
   });
   return out;
 }
@@ -34,3 +34,7 @@ assert.equal(render('{{message}}', { message: 'hello world' }), 'hello world');
 assert.equal(render('{{message}} {{message}}', {
   message: 'hello world'
 }), 'hello world hello world');
+assert.equal(render('{{firstValue + secondValue}}', {
+  firstValue: 2,
+  secondValue: 3,
+}), '2 + 3');
