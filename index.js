@@ -34,19 +34,40 @@ function reproduce(code, context) {
   return out;
 }
 
+function cleanOutput(expression) {
+  let out = expression;
+  if (out.replace !== undefined) {
+    out = out.replace('{{', '');
+    out = out.replace('}}', '');
+  }
+  return out;
+}
+
+function cleanAllOutput(expression) {
+  let out = expression;
+  if (out.replace !== undefined) {
+    out = out.replace(/\{\{/g, '');
+    out = out.replace(/\}\}/g, '');
+  }
+  return out;
+}
+
 function render(expression, context) {
   let self = this;
   let out = expression;
   let expressions = [...out.matchAll(rTemplate)];
   let c = 0;
   for (let i = 0; i < expressions.length; i += 1) {
-    if (hasFragments(out) && traverse(out, context)) {
+    let currentExpression = expressions[i];
+    if (hasFragments(out) && traverse(out, context) && self !== undefined && self.vm) {
+      out = traverse(out, context);
+      out = cleanAllOutput(out);
+      out = reproduce(out, context);
+    } else if (hasFragments(out) && traverse(out, context)) {
       out = traverse(out, context);
     }
-    out = out.replace('{{', '');
-    out = out.replace('}}', '');
+    out = cleanOutput(out);
   }
-  if (self !== undefined && self.vm) out = reproduce(out, context);
   return out;
 }
 root.render = render;
@@ -62,3 +83,7 @@ assert.equal(render.call({ vm: true }, '{{firstValue + secondValue}}', {
   firstValue: 3,
   secondValue: 7,
 }), '10');
+// assert.equal(render.call({ vm: true }, '{{firstValue}} + {{secondValue}} = {{firstValue + secondValue}}', {
+//   firstValue: 3,
+//   secondValue: 7,
+// }), '3 + 7 = 10');
