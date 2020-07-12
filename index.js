@@ -31,23 +31,37 @@ function reproduce(code, context) {
   return out;
 }
 
-function cleanOutput(expression) {
+function cleanTemplateOutput(expression) {
   let out = expression;
   if (out.replace !== undefined) {
     out = out.replace('{{', '');
-    out = out.replace('{%', '');
     out = out.replace('}}', '');
+  }
+  return out;
+}
+
+function cleanVMOutput(expression) {
+  let out = expression;
+  if (out.replace !== undefined) {
+    out = out.replace('{%', '');
     out = out.replace('%}', '');
   }
   return out;
 }
 
-function cleanAllOutput(expression) {
+function cleanAllTemplateOutput(expression) {
   let out = expression;
   if (out.replace !== undefined) {
     out = out.replace(/\{\{/g, '');
-    out = out.replace(/\{\%/g, '');
     out = out.replace(/\}\}/g, '');
+  }
+  return out;
+}
+
+function cleanAllVMOutput(expression) {
+  let out = expression;
+  if (out.replace !== undefined) {
+    out = out.replace(/\{\%/g, '');
     out = out.replace(/\%\}/g, '');
   }
   return out;
@@ -62,20 +76,22 @@ function produce(expression, context) {
 function reflect(expression, context) {
   let out = expression;
   out = produce(out, context);
-  out = cleanAllOutput(out);
+  out = cleanAllVMOutput(out);
   out = reproduce(out, context);
   return out;
 }
 
 function traverseStepContext(expression, context) {
   let out = expression;
-  Object.keys(context).forEach(key => {
-    let current = {};
-    current[key] = context[key];
-    if (expression.indexOf(key) > -1) {
-      out = traverse(out, current);
-    }
-  });
+  if (context !== undefined) {
+    Object.keys(context).forEach(key => {
+      let current = {};
+      current[key] = context[key];
+      if (expression.indexOf(key) > -1) {
+        out = traverse(out, current);
+      }
+    });
+  }
   return out;
 }
 
@@ -84,13 +100,19 @@ function render(expression, context) {
   let out = expression;
   let templateExpressions = [...out.matchAll(rTemplate)];
   let vmExpressions = [...out.matchAll(rVM)];
-  let c = 0;
-  for (let i = 0; i < templateExpressions.length; i += 1) {
-    out = produce(out, context);
-    out = cleanOutput(out);
-  }
-  for (let i = 0; i < vmExpressions.length; i += 1) {
-    out = reflect(out, context);
+  if (templateExpressions.length > 0) {
+    for (let i = 0; i < templateExpressions.length; i += 1) {
+      let currentExpression = templateExpressions[i];
+      let fragment = produce(currentExpression[0], context);
+      out = out.replace(currentExpression[0], fragment);
+      out = cleanTemplateOutput(out);
+    }
+  } if (vmExpressions.length > 0) {
+    for (let i = 0; i < vmExpressions.length; i += 1) {
+      let currentExpression = vmExpressions[i];
+      let fragment = reflect(currentExpression[0], context);
+      out = out.replace(currentExpression[0], fragment);
+    }
   }
   return out;
 }
@@ -107,7 +129,7 @@ assert.equal(render('{%firstValue + secondValue%}', {
   firstValue: 3,
   secondValue: 7,
 }), '10');
-// assert.equal(render('{{firstValue}} + {{secondValue}} = {% firstValue + secondValue %}', {
-//   firstValue: 3,
-//   secondValue: 7,
-// }), '3 + 7 = 10');
+assert.equal(render('{{firstValue}} + {{secondValue}} = {% firstValue + secondValue %}', {
+  firstValue: 3,
+  secondValue: 7,
+}), '3 + 7 = 10');
