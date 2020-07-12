@@ -75,7 +75,6 @@ function produce(expression, context) {
 
 function reflect(expression, context) {
   let out = expression;
-  out = produce(out, context);
   out = cleanAllVMOutput(out);
   out = reproduce(out, context);
   return out;
